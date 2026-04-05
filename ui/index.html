@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MemorySpine Chat</title>
+    <link rel="stylesheet" href="/ui/style.css">
+    <!-- Marked.js for Markdown parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h3>MemorySpine</h3>
+            <p>O(1) Memory Engine</p>
+        </div>
+
+        <div class="session-controls">
+            <div style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 15px;">
+                <div class="sidebar-btn"
+                    style="text-align:center; background: rgba(139, 92, 246, 0.2); color:white; border-color: #8b5cf6;">
+                    🚀 LLaMA 3 8B (Active)</div>
+            </div>
+
+            <button id="save-session-btn" class="sidebar-btn">💾 Save Session (10M Slots)</button>
+            <button id="load-session-btn" class="sidebar-btn">📂 Load Session</button>
+        </div>
+
+        <div class="documents-section">
+            <h4>Uploaded Documents</h4>
+            <ul id="doc-list" class="doc-list">
+                <!-- Uploaded docs will appear here -->
+            </ul>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div id="chat-container" class="chat-container">
+            <div class="message system-msg">
+                <div class="avatar logo-bg">M</div>
+                <div class="message-body">
+                    <p>Welcome to MemorySpine! Use the input below to chat, or attach documents to ingest them into the
+                        infinite memory engine. The system is securely locked behind a fully offline LLaMA 3 core.</p>
+                </div>
+            </div>
+            <!-- Chat history goes here -->
+        </div>
+
+        <div class="input-area">
+            <div class="input-box">
+                <label for="file-upload" class="attach-btn" title="Attach Document (txt, md, js, etc.)">
+                    <!-- SVG Clip icon -->
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path
+                            d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48">
+                        </path>
+                    </svg>
+                </label>
+                <input type="file" id="file-upload" style="display: none;"
+                    accept=".txt,.md,.pdf,.csv,.cpp,.h,.py,.rs,.go,.json,.bat">
+
+                <textarea id="chat-input" placeholder="Message MemorySpine..." rows="1"></textarea>
+
+                <button id="send-btn" class="send-btn" disabled>
+                    <!-- SVG Send icon -->
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+                <button id="stop-btn" class="stop-btn" style="display: none;">
+                    <!-- SVG Stop icon -->
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="6" y="6" width="12" height="12" rx="2" ry="2"></rect>
+                    </svg>
+                </button>
+            </div>
+            <div class="footer-text">MemorySpine can make mistakes. Consider verifying important information.</div>
+        </div>
+    </div>
+
+    <!-- Upload Progress Modal -->
+    <div id="upload-modal" class="modal">
+        <div class="modal-content">
+            <h3>Ingesting Document</h3>
+            <p id="upload-status">Chunking and embedding document...</p>
+            <div class="loader"></div>
+        </div>
+    </div>
+
+    <script>
+        const chatInput = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-btn');
+        const chatContainer = document.getElementById('chat-container');
+        const saveSessionBtn = document.getElementById('save-session-btn');
+        const loadSessionBtn = document.getElementById('load-session-btn');
+        const fileUpload = document.getElementById('file-upload');
+        const uploadModal = document.getElementById('upload-modal');
+        const docList = document.getElementById('doc-list');
+        const stopBtn = document.getElementById('stop-btn');
+        let chatHistory = [];
+        let currentAbortController = null;
+        let isModelLoaded = true; // Auto-booted by app.py on startup
+
+        stopBtn.addEventListener('click', () => {
+            if (currentAbortController) {
+                currentAbortController.abort();
+            }
+        });
+
+        // Auto-resize textarea
+        chatInput.addEventListener('input', function () {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+            sendBtn.disabled = this.value.trim() === '' || !isModelLoaded;
+        });
+
+        // Enter to send
+        chatInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                if (!sendBtn.disabled) sendMsg();
+            }
+        });
+
+        sendBtn.addEventListener('click', sendMsg);
+
+        saveSessionBtn.addEventListener('click', async () => {
+            saveSessionBtn.textContent = 'Saving...';
+            try {
+                await fetch('/api/save_session', { method: 'POST' });
+                saveSessionBtn.textContent = '✅ Saved to disk';
+                setTimeout(() => saveSessionBtn.textContent = '💾 Save Session (10M Slots)', 3000);
+            } catch {
+                saveSessionBtn.textContent = '❌ Error';
+            }
+        });
+
+        loadSessionBtn.addEventListener('click', async () => {
+            appendMessage('assistant', '*Loading 10M-slot session from disk...*');
+            try {
+                const res = await fetch('/api/load_session', { method: 'POST' });
+                const data = await res.json();
+                appendMessage('assistant', `Session load complete. Retained ${data.items_loaded} chunks.`);
+            } catch {
+                appendMessage('assistant', '❌ Error loading session.');
+            }
+        });
+
+
+
+        function appendMessage(role, content) {
+            const div = document.createElement('div');
+            div.className = `message ${role}-msg`;
+
+            const avatar = document.createElement('div');
+            avatar.className = `avatar ${role === 'user' ? 'user-bg' : 'logo-bg'}`;
+            avatar.textContent = role === 'user' ? 'U' : 'M';
+
+            const body = document.createElement('div');
+            body.className = 'message-body';
+
+            const p = document.createElement('div');
+            // Parse Markdown for assistant responses
+            if (role === 'assistant') {
+                p.innerHTML = marked.parse(content);
+            } else {
+                p.textContent = content; // Don't parse markdown for pure user input visual safety
+            }
+            body.appendChild(p);
+
+            div.appendChild(avatar);
+            div.appendChild(body);
+            chatContainer.appendChild(div);
+
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return p;
+        }
+
+        async function sendMsg() {
+            if (!isModelLoaded) {
+                alert("Please boot a model from the sidebar first!");
+                return;
+            }
+            const content = chatInput.value.trim();
+            if (!content) return;
+
+            // No model check needed, running local Qwen3.5
+
+
+            // Append user msg to UI and history
+            appendMessage('user', content);
+            chatHistory.push({ "role": "user", "content": content });
+
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+            sendBtn.style.display = 'none';
+            stopBtn.style.display = 'flex';
+            currentAbortController = new AbortController();
+
+            // Prepare Assistant bubble
+            const assistantBody = appendMessage('assistant', '...');
+            let thinkingText = "";
+            let responseText = "";
+
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        model: "llama3_8b",
+                        messages: [{ "role": "user", "content": content }] // EXTREME KV CACHE DROPPING
+                    }),
+                    signal: currentAbortController.signal
+                });
+
+                if (!res.ok) throw new Error("API Error");
+
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let buffer = "";
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); // Keep incomplete line in buffer
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const dataStr = line.substring(6).trim();
+                            if (dataStr === '[DONE]') continue;
+                            try {
+                                const data = JSON.parse(dataStr);
+                                if (data.error) {
+                                    responseText += "\n\n**Error**: " + data.error;
+                                    break;
+                                }
+                                if (data.choices && data.choices[0].delta) {
+                                    const delta = data.choices[0].delta;
+
+                                    // Separately collect reasoning vs normal content to prevent HTML span inflation
+                                    if (delta.reasoning_content) {
+                                        thinkingText += delta.reasoning_content;
+                                    }
+                                    if (delta.content) {
+                                        responseText += delta.content;
+                                    }
+
+                                    // Compile cleanly
+                                    let combinedHtml = "";
+                                    if (thinkingText.length > 0) {
+                                        combinedHtml += `<div style="background-color: #f1f5f9; color: #475569; padding: 12px; margin-bottom: 12px; border-radius: 8px; font-size: 0.9em; border-left: 4px solid #94a3b8;"><details open><summary style="cursor:pointer; font-weight:bold; margin-bottom: 5px;">Brain1 Thought Process</summary>${marked.parse(thinkingText)}</details></div>`;
+                                    }
+                                    if (responseText.length > 0) {
+                                        combinedHtml += marked.parse(responseText);
+                                    } else if (thinkingText.length > 0) {
+                                        combinedHtml += `<p style="opacity: 0.5;"><em>Generating response...</em></p>`;
+                                    }
+
+                                    assistantBody.innerHTML = combinedHtml;
+                                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                                }
+                            } catch (e) {
+                                console.error("Parse err", e, dataStr);
+                            }
+                        }
+                    }
+                }
+
+            } catch (err) {
+                if (err.name === 'AbortError') {
+                    responseText += "\n\n*[Generation explicitly stopped]*";
+                    let combinedHtml = "";
+                    if (thinkingText.length > 0) {
+                        combinedHtml += `<div style="background-color: #f1f5f9; color: #475569; padding: 12px; margin-bottom: 12px; border-radius: 8px; font-size: 0.9em; border-left: 4px solid #94a3b8;"><details><summary style="cursor:pointer; font-weight:bold;">Brain1 Thought Process</summary>${marked.parse(thinkingText)}</details></div>`;
+                    }
+                    combinedHtml += marked.parse(responseText);
+                    assistantBody.innerHTML = combinedHtml;
+                } else {
+                    console.error(err);
+                    assistantBody.innerHTML = "Sorry, an error occurred while connecting to the backend.";
+                }
+            } finally {
+                chatHistory.push({ "role": "assistant", "content": assistantReply });
+                sendBtn.style.display = 'flex';
+                stopBtn.style.display = 'none';
+                sendBtn.disabled = true;
+                currentAbortController = null;
+            }
+        }
+
+        // File Upload Handling
+        fileUpload.addEventListener('change', async function () {
+            const file = this.files[0];
+            if (!file) return;
+
+            uploadModal.style.display = 'flex';
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                if (data.success) {
+                    // add to sidebar
+                    const li = document.createElement('li');
+                    li.textContent = `📎 ${file.name} (${data.chunks} chunks)`;
+                    docList.appendChild(li);
+                } else {
+                    alert('Upload failed: ' + data.error);
+                }
+            } catch (e) {
+                alert('Upload error: ' + e);
+            }
+
+            uploadModal.style.display = 'none';
+            this.value = ''; // Reset
+        });
+
+
+
+    </script>
+</body>
+
+</html>

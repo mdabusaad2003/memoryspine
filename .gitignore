@@ -1,0 +1,27 @@
+__pycache__/
+*.pyc
+
+# Auto-downloaded models & datasets
+models/
+embeddings/
+uploads/
+llama-bin/
+
+# Auto-downloaded archives
+*.zip
+*.tar.gz
+
+# Binaries and compiled libraries
+*.dll
+*.exe
+*.so
+*.dylib
+*.obj
+*.o
+*.lib
+*.exp
+
+# MemorySpine saved sessions
+*session_ms.bin
+*session_chunks.dat
+*session*

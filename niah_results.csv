@@ -1,0 +1,7 @@
+DepthTokens,Chunks,RetrievalRank,RetrievalSuccess,LLMSuccess,LLMOutput
+10000,32,1,True,True,The secret passcode for the underground vault is: BANANA_MANGO_42
+50000,159,1,True,True,The secret passcode for the underground vault is: BANANA_MANGO_42
+100000,318,1,True,True,The secret passcode for the underground vault is: BANANA_MANGO_42
+250000,795,1,True,True,The secret passcode for the underground vault is: BANANA_MANGO_42
+500000,1589,1,True,True,The secret passcode for the underground vault is: BANANA_MANGO_42
+1000000,3177,-1,False,False,"There is no secret passcode for the underground vault mentioned in the provided context. The text only discusses the human genome, Amazonian rainforest, and cryptocurrency, and does not mention an underground vault."
