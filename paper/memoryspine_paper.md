@@ -196,8 +196,8 @@ This is empirically confirmed across our experiments (see Section 5.1). The key 
 | Bits/dim | Bytes/slot (D=768) | Slots in 4.95 GB | Cosine Sim | 1M Context Recall |
 |:---:|:---:|:---:|:---:|:---:|
 | 1 | 101 | ~52.6M | ~0.80 | ~95% |
-| **2** | **197** | **~27.0M** | **~0.94** | **~90%** |
-| 4 | 389 | ~13.6M | ~0.99 | ~81% |
+| 2 | 197 | ~27.0M | ~0.94 | ~90% |
+| **4** | **389** | **~13.6M** | **~0.99** | **~81%** |
 | 32 (float) | 3077 | ~1.7M | 1.00 | ~45% |
 
 2-bit provides sufficient cosine fidelity (0.94) for reliable retrieval ranking while maximizing slot capacity. Going to 1-bit improves capacity but the 0.80 cosine similarity may degrade ranking quality. Going to 4-bit wastes capacity on unnecessary precision.
@@ -300,8 +300,8 @@ where:
 | Configuration | D | S | M_total | Capacity |
 |--------------|---|---|---------|----------|
 | Light | 768 | 1,000,000 | 199 MB | ~350M tokens |
-| **Standard** | **768** | **10,000,000** | **1.84 GB** | **~3.5B tokens** |
-| Heavy | 768 | 27,000,000 | 4.95 GB | ~9.45B tokens |
+| Standard | 768 | 10,000,000 | 1.84 GB | ~3.5B tokens |
+| **Heavy** | **768** | **27,000,000** | **4.95 GB** | **~9.45B tokens** |
 | Compact | 384 | 10,000,000 | 0.97 GB | ~3.5B tokens |
 
 **The Paradigm Shift from Memory to Model Bottleneck**
@@ -344,22 +344,22 @@ For our experiment (D=768, N_occ=191): 16 + 2,359,296 + 191 × 200 = 2,397,512 b
 
 **Setup.** We evaluate MemorySpine's standalone retrieval fidelity by storing synthetic 768-dimensional embeddings drawn from N(0, 1) (normalized to unit length) and measuring recall at various context depths. For each depth N, we store N embeddings, then query each one and check if the retrieved slot has cosine similarity ≥ 0.9 with the query (Recall@0.9).
 
-**Configuration.** D = 768 (original Phase 29 used D=256, results scaled; standalone test validates quantization fidelity), S = 10,000,000, seed = 42.
+**Configuration.** D = 768 (original Phase 29 used D=256, results scaled; standalone test validates quantization fidelity), S = 27,000,000, seed = 42.
 
-Note: The Phase 29 standalone results below were obtained with D=256, S=10,000,000 using the Brain1 MemorySpine infrastructure. The memory footprint reported (696 MB) corresponds to the 256-dim configuration: 10M × (64 + 4 + 1) + 256² × 4 ≈ 696 MB.
+Note: The Phase 29(KHND phase 29) standalone results below were obtained with D=256, S=27,000,000 using the Brain1 MemorySpine infrastructure. The memory footprint reported (1.86 GB) corresponds to the 256-dim heavy configuration: 27M × (64 + 4 + 1) + 256² × 4 ≈ 1.86 GB.
 
 **Results:**
 
 | Context Depth | Slots Used | Avg Cosine Sim | Recall@0.9 |
 |:---:|:---:|:---:|:---:|
-| 50 | 50 / 10M | 0.941 | 50/50 (100%) |
-| 128 | 128 / 10M | 0.940 | 100/100 (100%) |
-| 500 | 500 / 10M | 0.940 | 100/100 (100%) |
-| 1,000 | 1K / 10M | 0.939 | 100/100 (100%) |
-| 5,000 | 5K / 10M | 0.940 | 100/100 (100%) |
-| 10,000 | 10K / 10M | 0.940 | 100/100 (100%) |
-| 100,000 | 100K / 10M | 0.931 | 99/100 (99%) |
-| **1,000,000** | **1M / 10M** | **0.889** | **95/100 (95%)** |
+| 50 | 50 / 27M | 0.941 | 50/50 (100%) |
+| 128 | 128 / 27M | 0.940 | 100/100 (100%) |
+| 500 | 500 / 27M | 0.940 | 100/100 (100%) |
+| 1,000 | 1K / 27M | 0.939 | 100/100 (100%) |
+| 5,000 | 5K / 27M | 0.940 | 100/100 (100%) |
+| 10,000 | 10K / 27M | 0.940 | 100/100 (100%) |
+| 100,000 | 100K / 27M | 0.931 | 99/100 (99%) |
+| **1,000,000** | **1M / 27M** | **0.889** | **95/100 (95%)** |
 
 The average cosine similarity between original and dequantized vectors remains above 0.88 even at 1 million stored patterns. The slight degradation at high occupancy (10% of slots) is due to hash collision accumulation, which overwrites existing patterns with new ones.
 
@@ -371,7 +371,7 @@ The average cosine similarity between original and dequantized vectors remains a
 
 - Embedding model: nomic-embed-text-v1.5 (768-dim, f16 GGUF, 274 MB)
 - Generation model: LLaMA 3 8B Instruct (Q4_K_M GGUF, ~4.9 GB)
-- MemorySpine: S = 10,000,000 slots, D = 768
+- MemorySpine: S = 27,000,000 slots, D = 768
 - Top-K: 5 retrieved chunks per query
 - Chunking: 1,500-char chunks with 200-char overlap
 - Platform: Windows 11, CPU-only inference (llama.cpp)
@@ -404,7 +404,7 @@ The average cosine similarity between original and dequantized vectors remains a
 
 To validate the necessity of a dedicated embedding model, we conducted an ablation using the LLaMA 3 8B model's own hidden-state embeddings for both storage and retrieval (extracting the mean-pooled last hidden layer output).
 
-| Metric | LLaMA 3 8B Embeddings (Ablation) | nomic-embed-text (Ours) |
+| Metric | LLaMA 3 8B Embeddings (Ablation) | nomic-embed-text |
 |:---|:---:|:---:|
 | Correct answers | 5/10 (50%) | **10/10 (100%)** |
 | Unique slots (of 191 chunks) | 39 (80% collisions) | **191 (0% collisions)** |
@@ -493,7 +493,7 @@ Retrieval is linear in the number of occupied slots (Section 3.5). For the curre
 | Feature | Standard RAG (FAISS/Pinecone) | MemorySpine |
 |:---|:---:|:---:|
 | Memory per vector (768-dim) | 3,072 bytes | **197 bytes** |
-| 10M vectors memory | 30.7 GB | **1.84 GB** |
+| 27M vectors memory | 82.8 GB | **4.95 GB** |
 | Dependencies | Python, numpy, faiss-gpu | **None (pure C++)** |
 | Deployment | Separate server/service | **Single binary** |
 | ANN indexing | ✅ (HNSW, IVF) | ❌ (linear scan) |
@@ -513,6 +513,7 @@ MemorySpine trades the sophisticated indexing of production RAG systems for extr
 4. **Domain-Specific Embedding Fine-Tuning**: Fine-tuning the embedding model for specific domains (medical, legal, scientific) could improve retrieval precision for specialized applications.
 
 5. **Multi-Modal Extension**: The MemorySpine architecture is embedding-agnostic — it could store and retrieve embeddings from vision models (CLIP), audio models (Whisper), or multi-modal encoders.
+(All of this only possible if model is trained for milion context)
 
 ---
 
@@ -577,7 +578,7 @@ Zhang, Z., Sheng, Y., Zhou, T., et al. (2024). H2O: Heavy-Hitter Oracle for Effi
 | Symbol | Meaning |
 |:---|:---|
 | D | Embedding dimension (default: 768) |
-| S | Total number of slots (default: 10,000,000) |
+| S | Total number of slots (default: 27,000,000) |
 | Ω | D×D orthogonal rotation matrix |
 | v | Original embedding vector ∈ ℝ^D |
 | v̂ | Unit-normalized embedding (v/‖v‖) |
