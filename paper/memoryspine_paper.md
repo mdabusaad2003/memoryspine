@@ -196,8 +196,8 @@ This is empirically confirmed across our experiments (see Section 5.1). The key 
 | Bits/dim | Bytes/slot (D=768) | Slots in 4.95 GB | Cosine Sim | 1M Context Recall |
 |:---:|:---:|:---:|:---:|:---:|
 | 1 | 101 | ~52.6M | ~0.80 | ~95% |
-| 2 | 197 | ~27.0M | ~0.94 | ~90% |
-| **4** | **389** | **~13.6M** | **~0.99** | **~81%** |
+| **2** | **197** | **~27.0M** | **~0.94** | **~90%** |
+| 4 | 389 | ~13.6M | ~0.99 | ~81% |
 | 32 (float) | 3077 | ~1.7M | 1.00 | ~45% |
 
 2-bit provides sufficient cosine fidelity (0.94) for reliable retrieval ranking while maximizing slot capacity. Going to 1-bit improves capacity but the 0.80 cosine similarity may degrade ranking quality. Going to 4-bit wastes capacity on unnecessary precision.
