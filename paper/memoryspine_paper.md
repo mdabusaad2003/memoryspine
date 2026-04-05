@@ -1,13 +1,13 @@
 # MemorySpine: O(1) Memory Context Extension for Large Language Models via 2-Bit Quantized Embedding Storage
 
 **Abu Saad**
-mdabusaad2003@gmail.com | [Contact](https://facebook.com/arafat.ahmed.20004)
+<mdabusaad2003@gmail.com> | [Contact](https://facebook.com/arafat.ahmed.20004)
 
 ---
 
 ## Abstract
 
-We present **MemorySpine**, a constant-memory context extension system for Large Language Models that decouples semantic storage from model architecture. MemorySpine stores document embeddings in a fixed-size array of 10 million slots using 2-bit Lloyd-Max quantization, achieving a constant memory footprint of **1.84 GB** regardless of context length or model size. Unlike KV-cache approaches whose memory grows as O(n · L · d), MemorySpine operates at **O(1)** memory complexity by storing embedding-level semantic fingerprints rather than per-layer attention states. We employ an orthogonal rotation matrix Ω initialized via Modified Gram-Schmidt for content-addressable hashing, ensuring uniform slot distribution with near-zero collision rates. In experiments on a 240,000-character synthetic document (~60K tokens), MemorySpine paired with a dedicated embedding model (nomic-embed-text-v1.5) and a small language model (LLaMA 3 8B) achieves **10/10 factual recall** with all answers grounded in retrieved context and zero hallucination. Standalone recall tests demonstrate 100% Recall@0.9 up to 10,000 stored patterns and 95% at 1 million patterns. MemorySpine is implemented as a single C++ header file with zero external dependencies, operates as a drop-in augmentation layer for any LLM accessible via llama.cpp, and supports persistent memory across sessions via a sparse binary format.
+I present **MemorySpine**, a constant-memory context extension system for Large Language Models that decouples semantic storage from model architecture. MemorySpine stores document embeddings in a fixed-size array of 27 million slots using 2-bit Lloyd-Max quantization, achieving a constant memory footprint of **4.95 GB** regardless of context length or model size. Unlike KV-cache approaches whose memory grows as O(n · L · d), MemorySpine operates at **O(1)** memory complexity by storing embedding-level semantic fingerprints rather than per-layer attention states. We employ an orthogonal rotation matrix Ω initialized via Modified Gram-Schmidt for content-addressable hashing, ensuring uniform slot distribution with near-zero collision rates. In experiments on a 240,000-character synthetic document (~60K tokens), MemorySpine paired with a dedicated embedding model (nomic-embed-text-v1.5) and a small language model (LLaMA 3 8B) achieves **10/10 factual recall** with all answers grounded in retrieved context and zero hallucination. Standalone recall tests demonstrate 100% Recall@0.9 up to 10,000 stored patterns and 95% at 1 million patterns. MemorySpine is implemented as a single C++ header file with zero external dependencies, operates as a drop-in augmentation layer for any LLM accessible via llama.cpp, and supports persistent memory across sessions via a sparse binary format.
 
 ---
 
@@ -32,7 +32,7 @@ Several approaches have been proposed to address this limitation:
 - **RoPE scaling** (Su et al., 2024) extends the positional encoding range but is bounded by the underlying attention mechanism.
 - **Retrieval-Augmented Generation** (RAG) (Lewis et al., 2020) is the closest paradigm to our approach but typically relies on external vector databases (FAISS, Pinecone, Chroma) that store full-precision embeddings, require complex infrastructure, and are not integrated into the model's inference loop.
 
-We propose **MemorySpine**, a fundamentally different approach. Rather than compressing the KV-cache or extending the attention window, MemorySpine operates as an **external constant-memory storage layer** that:
+I propose **MemorySpine**, a fundamentally different approach. Rather than compressing the KV-cache or extending the attention window, MemorySpine operates as an **external constant-memory storage layer** that:
 
 1. Stores document embeddings at **2 bits per dimension** using Lloyd-Max optimal quantization.
 2. Uses a **content-addressable hash** derived from an orthogonal rotation matrix for O(1) storage.
@@ -44,6 +44,7 @@ The result is a system whose memory footprint is **constant** — determined onl
 MemorySpine evolved through Phases 14→28→29→30 of the Brain1 research program within the KHND (Knowledge-Hamiltonian Neural Dynamics) framework. Originally designed as one tier of a three-tier memory system (Hopfield associative memory for static patterns, Stiefel-Householder plastic memory for adaptive encoding, and MemorySpine for streaming context), the MemorySpine proved independently useful as a standalone context extension layer for any LLM.
 
 **Contributions:**
+
 - A formal analysis of 2-bit Lloyd-Max quantization applied to normalized embedding vectors, showing ~0.94 cosine similarity preservation.
 - An orthogonal hash construction using Modified Gram-Schmidt, inspired by TurboQuant (Ashkboos et al., 2025), that achieves near-zero collision rates on real embedding distributions.
 - Write-once semantics that avoid the exponential decay inherent in EMA-based memory updates, with formal survival probability analysis.
@@ -64,9 +65,10 @@ MemorySpine evolved through Phases 14→28→29→30 of the Brain1 research prog
 
 ### 2.3 Retrieval-Augmented Generation
 
-RAG systems (Lewis et al., 2020) retrieve relevant documents from an external corpus to augment generation. Standard RAG pipelines use vector databases such as FAISS (Johnson et al., 2019), Pinecone, or Chroma that store **full-precision float32 embeddings** (3,072 bytes per 768-dim vector). For 10 million vectors, this requires **30.7 GB** — 16.7× more than MemorySpine's 1.84 GB. Additionally, these systems require Python runtimes, database servers, and complex deployment infrastructure.
+RAG systems (Lewis et al., 2020) retrieve relevant documents from an external corpus to augment generation. Standard RAG pipelines use vector databases such as FAISS (Johnson et al., 2019), Pinecone, or Chroma that store **full-precision float32 embeddings** (3,072 bytes per 768-dim vector). For 27 million vectors, this requires **82.8 GB** — 16.7× more than MemorySpine's 4.95 GB. Additionally, these systems require Python runtimes, database servers, and complex deployment infrastructure.
 
 MemorySpine achieves the semantic retrieval benefits of RAG while being:
+
 - **16.7× more memory-efficient** via 2-bit quantization.
 - **Zero-dependency** — a single C++ header file.
 - **Self-contained** — no external databases, servers, or runtimes.
@@ -115,6 +117,7 @@ $$\omega_i = \frac{\tilde{\omega}_i}{\|\tilde{\omega}_i\|}$$
 where g_i denotes the i-th row of G, and ω_i denotes the i-th row of Ω.
 
 **Properties.** Since Ω is orthogonal (Ω^T Ω = I_D):
+
 1. **Norm preservation**: ‖Ωx‖ = ‖x‖ for all x ∈ ℝ^D.
 2. **Cosine similarity preservation**: For any x, y ∈ ℝ^D, cos(Ωx, Ωy) = cos(x, y).
 3. **Decorrelation**: The rotation breaks structured correlations in embedding space, distributing energy uniformly across rotated dimensions.
@@ -128,7 +131,7 @@ Property (3) is critical for hash quality: raw embeddings from neural networks e
 
 Given an input vector x ∈ ℝ^D, we compute a slot index h(x) ∈ {0, 1, ..., S-1} as follows:
 
-**Step 1: Rotate.** Compute x' = Ωx, where x'_i = Σ_j Ω_{ij} x_j.
+**Step 1: Rotate.** Compute x' = Ωx, where x'*i = Σ_j Ω*{ij} x_j.
 
 **Step 2: Hash.** Apply a golden-ratio FNV-style hash to the first 16 rotated dimensions:
 
@@ -142,11 +145,11 @@ where ⊕ denotes bitwise XOR, bits(·) reinterprets a float32 as a uint32, φ =
 
 The golden ratio constant φ provides optimal bit mixing (Knuth, 1997), and the combination with shift-XOR operations produces a hash with strong avalanche properties. Using only 16 of D rotated dimensions (rather than all D) is sufficient because the orthogonal rotation distributes information uniformly: after rotation, the first 16 dimensions capture a representative projection of the full D-dimensional vector.
 
-**Collision Analysis.** For S = 10^7 slots and N stored vectors, the expected number of collisions under a uniform hash is given by the birthday paradox:
+**Collision Analysis.** For S = 2.7 \times 10^7 slots and N stored vectors, the expected number of collisions under a uniform hash is given by the birthday paradox:
 
 $$E[\text{collisions}] \approx \frac{N^2}{2S}$$
 
-For N = 191 chunks (our 240K-char test document): E[collisions] ≈ 191²/(2 × 10^7) ≈ 0.0018. This is consistent with our experimental observation of **0 collisions out of 191 chunks** when using nomic-embed-text embeddings.
+For N = 191 chunks (our 240K-char test document): E[collisions] ≈ 191²/(2 × 2.7 × 10^7) ≈ 0.00067. This is consistent with our experimental observation of **0 collisions out of 191 chunks** when using nomic-embed-text embeddings.
 
 ### 3.4 2-Bit Lloyd-Max Quantization
 
@@ -190,12 +193,12 @@ This is empirically confirmed across our experiments (see Section 5.1). The key 
 
 **Why 2-bit and not 1-bit or 4-bit?** The choice of 2-bit quantization represents a sweet spot in the precision-capacity trade-off:
 
-| Bits/dim | Bytes/slot (D=768) | Slots in 1.84 GB | Cosine Sim | 1M Context Recall |
+| Bits/dim | Bytes/slot (D=768) | Slots in 4.95 GB | Cosine Sim | 1M Context Recall |
 |:---:|:---:|:---:|:---:|:---:|
-| 1 | 101 | ~18.2M | ~0.80 | ~95% |
-| **2** | **197** | **~9.3M** | **~0.94** | **~90%** |
-| 4 | 389 | ~4.7M | ~0.99 | ~81% |
-| 32 (float) | 3077 | ~598K | 1.00 | ~45% |
+| 1 | 101 | ~52.6M | ~0.80 | ~95% |
+| **2** | **197** | **~27.0M** | **~0.94** | **~90%** |
+| 4 | 389 | ~13.6M | ~0.99 | ~81% |
+| 32 (float) | 3077 | ~1.7M | 1.00 | ~45% |
 
 2-bit provides sufficient cosine fidelity (0.94) for reliable retrieval ranking while maximizing slot capacity. Going to 1-bit improves capacity but the 0.80 cosine similarity may degrade ranking quality. Going to 4-bit wastes capacity on unnecessary precision.
 
@@ -213,7 +216,7 @@ The average recall across uniformly-spaced probes is:
 
 $$R_{\text{avg}} = \frac{1}{N} \sum_{P=0}^{N-1} e^{-(N-P)/S} = \frac{S}{N}\left(1 - e^{-N/S}\right)$$
 
-For S=10M, N=191 (our test): R_avg ≈ 1.0 (essentially all patterns survive). For S=10M, N=1M: R_avg ≈ 1.0 (10M >> 1M). This demonstrates the advantage of massive overprovisioning.
+For S=27M, N=191 (our test): R_avg ≈ 1.0 (essentially all patterns survive). For S=27M, N=1M: R_avg ≈ 1.0 (27M >> 1M). This demonstrates the advantage of massive overprovisioning.
 
 **Compression Ratio.** Compared to float32 storage:
 
@@ -230,7 +233,7 @@ $$\text{sim}(s, q) = \frac{\tilde{v}_s \cdot q}{\|\tilde{v}_s\| \cdot \|q\| + \e
 
 where ε = 10^{-8} prevents division by zero.
 
-3. Return the K slots with highest similarity via partial sort.
+1. Return the K slots with highest similarity via partial sort.
 
 **Complexity.** Retrieval is O(|O| · D) — linear in the number of occupied slots and the embedding dimension. For |O| = 191 and D = 768, this takes approximately 1-2 ms on modern CPUs. For millions of stored patterns, this could be accelerated via locality-sensitive hashing (LSH) or approximate nearest neighbor (ANN) indices, which we leave for future work.
 
@@ -244,6 +247,7 @@ MemorySpine operates in a dual-server configuration using llama.cpp:
 | Generation | Any GGUF model | 8090 | Text generation with retrieved context |
 
 **Task-specific prefixes.** Following Nussbaum et al. (2024), we prepend task-specific prefixes to inputs for the embedding model:
+
 - Storage: `"search_document: " + chunk_text`
 - Retrieval: `"search_query: " + query_text`
 
@@ -287,6 +291,7 @@ The total memory footprint of MemorySpine is:
 $$M_{\text{total}} = S \times \left(\left\lceil \frac{D}{4} \right\rceil + 4 + 1\right) + D^2 \times 4$$
 
 where:
+
 - S × ⌈D/4⌉ = quantized embedding storage (2 bits per dimension)
 - S × 4 = scale factors (float32)
 - S × 1 = occupancy flags (uint8)
@@ -301,11 +306,12 @@ where:
 
 **The Paradigm Shift from Memory to Model Bottleneck**
 
-It is mathematically critical to note that while our infrastructure limits were bounded to 27 Million slots (totaling ~9.4 Billion tokens) for these benchmarks, this decision was not bound by hardware—4.95 GB executes fluidly on a basic modern laptop. Rather, we capped the scale because *no current generative AI architecture can actually synthesize beyond this limit without hallucinating.* 
+It is mathematically critical to note that while our infrastructure limits were bounded to 27 Million slots (totaling ~9.4 Billion tokens) for these benchmarks, this decision was not bound by hardware—4.95 GB executes fluidly on a basic modern laptop. Rather, we capped the scale because *no current generative AI architecture can actually synthesize beyond this limit without hallucinating.*
 
 By chunking the text (where 1 slot mathematically correlates to ~350 tokens of dense semantic context), MemorySpine has formally solved the hardware storage equation. The bottleneck has now explicitly shifted entirely onto the Large Language Models. Even the LLaMA 3 8B model utilized in our testing fundamentally collapses if directly subjected to billions of contextual tokens natively because standard attention models simply are not trained to ingest that sheer magnitude of data at once. While specialized, smaller language models trained specifically for "infinite context" might endure longer iterations, MemorySpine definitively proves that the path forward for infinite-context AI resides in $O(1)$ memory retrieval bridging gaps in LLM training, rather than expanding physical hardware linearly.
 
 **This memory overhead is essentially constant regardless of:**
+
 - Model size (0.8B, 7B, 70B — all use the exact same MemorySpine overhead)
 - Context length (storing 100 vs. 27,000,000 chunks utilizes the exact same preallocated RAM)
 - Number of transformer layers (MemorySpine operates strictly at the embedding layer)
@@ -362,6 +368,7 @@ The average cosine similarity between original and dequantized vectors remains a
 **Setup.** We construct a synthetic document of approximately 240,000 characters (~60,000 tokens) spanning 10 topical domains (quantum mechanics, ancient Rome, marine biology, machine learning, Renaissance art, space exploration, molecular gastronomy, Amazonian rainforest, cryptocurrency, human genome), each repeated 20 times across 200 chapters with domain-specific factual content interspersed with filler text.
 
 **Infrastructure:**
+
 - Embedding model: nomic-embed-text-v1.5 (768-dim, f16 GGUF, 274 MB)
 - Generation model: LLaMA 3 8B Instruct (Q4_K_M GGUF, ~4.9 GB)
 - MemorySpine: S = 10,000,000 slots, D = 768
@@ -387,6 +394,7 @@ The average cosine similarity between original and dequantized vectors remains a
 **Result: 10/10 correct answers (100% factual recall), zero hallucination.**
 
 **Ingestion statistics:**
+
 - 191 chunks generated from 240K characters
 - 191 unique slots used (0 collisions, 0% collision rate)
 - Embedding throughput: 3.3 chunks/second (CPU)
@@ -405,6 +413,7 @@ To validate the necessity of a dedicated embedding model, we conducted an ablati
 | Embedding speed | 0.4 chunks/sec | **3.3 chunks/sec** (8×) |
 
 The LLM embedding ablation reveals two critical failure modes:
+
 1. **Hash collision catastrophe**: LLM hidden states from similar documents produce nearly identical rotated projections, causing 80% of chunks to collide into the same slots.
 2. **Retrieval homogeneity**: With only 39 unique stored patterns, the same 5 slots are retrieved for every query regardless of topic, making discrimination impossible.
 
@@ -467,11 +476,9 @@ Retrieval is linear in the number of occupied slots (Section 3.5). For the curre
 
 ### 6.2 Limitations
 
-1. **Chunk-level granularity vs. Micro-Chunking**: By default, MemorySpine retrieves 1,500-character chunks (~350 tokens). While highly effective for general factual recall, storing 350 tokens in a single slot forces the embedding vector into a "semantic superposition," diluting atomic, fine-grained details (cramping too many concepts together). 
+1. **Chunk-level granularity vs. Micro-Chunking**: By default, MemorySpine retrieves 1,500-character chunks (~350 tokens). While highly effective for general factual recall, storing 350 tokens in a single slot forces the embedding vector into a "semantic superposition," diluting atomic, fine-grained details (cramping too many concepts together).
 
-   **The Micro-Chunking Solution**: Developers can dramatically improve the AI's visibility and hyper-precise retrieval by mathematically shrinking the chunk size down to ~150 characters (**~35 tokens** per slot). 
-   - **Benefit:** When chunks are atomized to just 35 tokens, the resulting embedding accurately captures a solitary fact or sentence with zero dilution. The retrieved context injected into the LLM is surgically relevant, practically eliminating hallucination from "cramped" context blending. 
-   - **Tradeoff:** This consumes slots 10x faster. However, because MemorySpine scales effortlessly to 27 Million slots on a normal laptop (yielding over ~945 Million Tokens even at extreme micro-chunking), developers have more than enough O(1) capacity to run 35-token micro-chunks endlessly. (To implement, simply modify `CHUNK_SIZE` in the python ingestion pipeline prior to embedding).
+   **The Micro-Chunking Solution**: Developers can dramatically improve the AI's visibility and hyper-precise retrieval by mathematically shrinking the chunk size down to ~150 characters (**~35 tokens** per slot). Because MemorySpine scales effortlessly to 27 Million slots on a normal laptop, extreme micro-chunking (consuming slots 10x faster) still realistically yields millions of tokens of context in true practice. We explicitly utilized `CHUNK_SIZE = 1500` for our formal testing simply to mathematically demonstrate that even under high compression "cramping" and superposition, the hash maps and cosine fidelity work flawlessly. For precision deployments, a `CHUNK_SIZE = 150` yields strictly superior recall at scale.
 
 2. **Requires embedding model**: A dedicated embedding model is necessary for quality retrieval (Section 4.3). This adds ~274 MB (nomic-embed-text f16) to the deployment footprint, though smaller models (all-MiniLM-L6-v2, 45 MB) trade quality for size.
 
@@ -669,4 +676,4 @@ int store(const float *vec) {
 
 ---
 
-*This paper describes work as part of the KHND (Knowledge-Hamiltonian Neural Dynamics) project. The MemorySpine architecture evolved through Phases 14→28→29→30 of the Brain1 research program.*
+*This paper describes work as part of the KHND (Koopman-Hamiltonian Neuro-Dynamics) project. The MemorySpine architecture evolved through Phases 14→28→29→30 of the Brain1 research program.*

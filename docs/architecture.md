@@ -119,8 +119,8 @@ MemorySpine uses two separate llama.cpp servers:
 ┌──────────────┐     ┌────────────────┐     ┌──────────────┐
 │  Embedding    │     │   MemorySpine  │     │  Generation   │
 │  Server       │────→│   Store        │────→│  Server       │
-│  port 8091    │     │   10M × 197B   │     │  port 8090    │
-│  768-dim      │     │   1.84 GB      │     │  Any LLM      │
+│  port 8091    │     │   27M × 197B   │     │  port 8090    │
+│  768-dim      │     │   4.95 GB      │     │  Any LLM      │
 └──────────────┘     └────────────────┘     └──────────────┘
 ```
 
